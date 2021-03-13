@@ -7,7 +7,11 @@ let canvas = {
 };
 
 let config = {
-  scheme: 1
+  scheme: 1,
+  barRatio: 0.02,
+
+  clockWeight: 1,
+  handWeight: 2,
 };
 
 let key = {
@@ -122,8 +126,10 @@ class Clock {
     let l1 = new Vector2(cos(this.ang.x), sin(this.ang.x)).mult(shape.r).add(center);
     let l2 = new Vector2(cos(this.ang.y), sin(this.ang.y)).mult(shape.r).add(center);
     
-    stroke(scheme.accent); strokeWeight(1); noFill();
+    stroke(scheme.accent); strokeWeight(config.clockWeight); noFill();
     circle(center.x, center.y, shape.d);
+
+    strokeWeight(config.handWeight);
     line(center.x, center.y, l1.x, l1.y);
     line(center.x, center.y, l2.x, l2.y);
   }
@@ -172,12 +178,13 @@ function draw () {
   // Colors
   const scheme = getColors();
   const shape = getClockShape();
+  const now = new Date();
 
   // Clearing
   background(scheme.background);
 
   // Drawing
-  const time = getTime();
+  const time = getTime(now);
   if (lastTime === null) {
     
     setTime(time);
@@ -190,11 +197,20 @@ function draw () {
   }
   
 
-  for (let x = 0; x < 8; x ++) {
-    for (let y = 0; y < 3; y ++) {
+  // Draw Clocks
+  for (let x = 0; x < 8; x ++)
+    for (let y = 0; y < 3; y ++)
       clocks[x][y].draw(scheme, shape);
-    }
-  }
+
+  // Draw Second Bar
+  const ms = now.getSeconds() * 1000 + now.getMilliseconds();
+  const rate = ms / 60000;
+
+  noStroke(); fill(scheme.accent);
+  rect(
+    0, canvas.size.y - shape.barHeight,
+    rate * canvas.size.x, shape.barHeight
+  );
 }
 
 function windowResized () {
@@ -218,11 +234,14 @@ function getClockShape () {
   let shape = {
     pos: null, off: null,
     r: null, d: null,
+    barHeight: null,
   }
 
-  let dx = canvas.size.x / 8;
-  let dy = canvas.size.y / 3;
-  shape.d = Math.min(dx, dy) * 0.99;
+  const wDiameter = canvas.size.x / 8 * 0.99;
+  const hDiameter = canvas.size.y / 3 * (1 - config.barRatio - 0.05);
+  shape.barHeight = canvas.size.y * config.barRatio;
+
+  shape.d = Math.min(wDiameter, hDiameter);
   shape.r = shape.d / 2;
 
   let total = new Vector2(8, 3).mult(shape.d);
@@ -314,15 +333,14 @@ function animateDigit (n, digit) {
   }
 }
 
-function getTime () {
+function getTime (now) {
   let time = [];
-
-  const now = new Date();
 
   let hour = now.getHours();
   hour = (hour > 12 ? hour - 12 : hour).toString().padStart(2, `0`).split(``);
 
   let minute = now.getMinutes().toString().padStart(2, `0`).split(``);
+
 
   return [...hour, ...minute].join(``);
 }
